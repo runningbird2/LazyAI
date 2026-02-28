@@ -44,10 +44,25 @@ _Lower ms -> better_
 ## Settings
 - **AI Optimization Type** | *This settings controls how aggressive the optimizations should be*
 - **Distance Scaling** | *This setting controls what % range of your simulation distance is considered close and far range*
+- **Distance Threshold Mode** | *Choose `SimulationScaled` (auto-derive distances from simulation distance) or `Fixed` (use exact block thresholds from config)*
 - **Mob Tempting Delay** | *This setting controls how much delay animals have to being tempted by an item*
 - **Disable Zombie Egg Stomping** | *This setting controls the prevention of zombies wanting to destroy turtle eggs*
 ### Available from version 1.3.2+
 - **Never Slow Down Distant Mobs** | *This setting controls if distant mobs should never slow down. Enabling this reduces the mod's TPS-boosting effect on your game, but will fix large (multiply chunks large) mob farms slowing down production.*
+
+### Fixed threshold configuration
+When `DistanceThresholdMode` is `Fixed`, these values in `lazy-ai.json` define exactly where each tier starts:
+- `FixedDistance_CloseBlocks` -> distance where **MediumRange** starts
+- `FixedDistance_FarBlocks` -> distance where **FarRange** starts
+
+Example (`>64` starts slowdown, `>96` enters far tier):
+```json
+{
+  "DistanceThresholdMode": "Fixed",
+  "FixedDistance_CloseBlocks": 64,
+  "FixedDistance_FarBlocks": 96
+}
+```
 
 <img src="https://github.com/PixelIndieDev/LazyAI/blob/main/documentation/previewImages/MC_LazyAI_settings.png?raw=true" alt="Lazy AI settings menu" width="850"/>
 

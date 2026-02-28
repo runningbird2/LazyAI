@@ -65,14 +65,17 @@ public class Lazy_ai_pixelindiedev implements ModInitializer {
     public static DistanceType GetClosestPlayerDistance(MobEntity mob) {
         if (mob == null) return DistanceType.FarRange;
 
-        PlayerEntity closestPlayer = mob.getEntityWorld().getClosestPlayer(mob, CONFIG.BlockDistance_Far);
+        int closeDistance = CONFIG.getEffectiveBlockDistanceCloseSquared();
+        int farDistance = CONFIG.getEffectiveBlockDistanceFarSquared();
+
+        PlayerEntity closestPlayer = mob.getEntityWorld().getClosestPlayer(mob, farDistance);
         if (closestPlayer == null) return DistanceType.FarRange;
 
         double distancebetween = mob.squaredDistanceTo(closestPlayer);
 
-        if (distancebetween >= CONFIG.BlockDistance_Far) {
+        if (distancebetween >= farDistance) {
             return DistanceType.FarRange;
-        } else if (distancebetween >= CONFIG.BlockDistance_Close) {
+        } else if (distancebetween >= closeDistance) {
             return DistanceType.MediumRange;
         } else {
             return DistanceType.CloseRange;

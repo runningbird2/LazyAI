@@ -1,6 +1,7 @@
 package com.pixelindiedev.lazy_ai_pixelindiedev.config.integration;
 
 import com.pixelindiedev.lazy_ai_pixelindiedev.config.DistanceScalingType;
+import com.pixelindiedev.lazy_ai_pixelindiedev.config.DistanceThresholdMode;
 import com.pixelindiedev.lazy_ai_pixelindiedev.config.ModConfig;
 import com.pixelindiedev.lazy_ai_pixelindiedev.config.OptimalizationType;
 import com.pixelindiedev.lazy_ai_pixelindiedev.config.TemptDelayEnum;
@@ -40,6 +41,17 @@ public class LazyAiConfigScreen extends Screen {
             int next = (config.DistanceScaling.ordinal() + 1) % values.length;
             config.DistanceScaling = values[next];
             btn.setMessage(Text.literal("Distance Scaling: " + config.DistanceScaling));
+            config.save();
+        }).dimensions(width / 2 - 100, y, 200, 20).build());
+
+        y += 25;
+
+        addDrawableChild(ButtonWidget.builder(Text.literal("Distance Threshold Mode: " + config.DistanceThresholdModeSetting), (btn) ->
+        {
+            DistanceThresholdMode[] values = DistanceThresholdMode.values();
+            int next = (config.DistanceThresholdModeSetting.ordinal() + 1) % values.length;
+            config.DistanceThresholdModeSetting = values[next];
+            btn.setMessage(Text.literal("Distance Threshold Mode: " + config.DistanceThresholdModeSetting));
             config.save();
         }).dimensions(width / 2 - 100, y, 200, 20).build());
 

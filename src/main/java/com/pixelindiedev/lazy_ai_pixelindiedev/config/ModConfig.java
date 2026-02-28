@@ -1,6 +1,7 @@
 package com.pixelindiedev.lazy_ai_pixelindiedev.config;
 
 import com.google.gson.*;
+import com.google.gson.annotations.SerializedName;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,11 +17,16 @@ public class ModConfig {
     public static final File configFile = new File(FabricLoader.getInstance().getConfigDir().toFile(), FILE_NAME);
     private static final Logger LOGGER = LoggerFactory.getLogger("LazyAI");
     public DistanceScalingType DistanceScaling = ModConfigDefaults.Defaults_DistanceScaling;
+    @SerializedName("DistanceThresholdMode")
+    public DistanceThresholdMode DistanceThresholdModeSetting = ModConfigDefaults.Defaults_DistanceThresholdMode;
     public OptimalizationType AIOptimizationType = ModConfigDefaults.Defaults_AIOptimizationType;
     //    Distance in squared blocks
     //    distance is based on simulation distance
     public int BlockDistance_Close = ModConfigDefaults.Defaults_BlockDistance_Close;
     public int BlockDistance_Far = ModConfigDefaults.Defaults_BlockDistance_Far;
+    //    Distance in regular blocks used for fixed thresholds
+    public int FixedDistance_CloseBlocks = ModConfigDefaults.Defaults_FixedDistance_CloseBlocks;
+    public int FixedDistance_FarBlocks = ModConfigDefaults.Defaults_FixedDistance_FarBlocks;
     public TemptDelayEnum TemptDelay = ModConfigDefaults.Defaults_TemptDelay;
     public boolean DisableZombieEggStomping = ModConfigDefaults.Defaults_DisableZombieEggStomping;
     public boolean NeverSlowdownDistantMobs = ModConfigDefaults.Defaults_NeverSlowdownDistantMobs;
@@ -52,6 +58,12 @@ public class ModConfig {
             obj.addProperty("DistanceScaling", value);
             changed = true;
         }
+        if (!obj.has("DistanceThresholdMode")) {
+            var value = ModConfigDefaults.Defaults_DistanceThresholdMode.name();
+            LOGGER.warn("Missing option 'DistanceThresholdMode', adding default (" + value + ").");
+            obj.addProperty("DistanceThresholdMode", value);
+            changed = true;
+        }
         if (!obj.has("AIOptimizationType")) {
             var value = ModConfigDefaults.Defaults_AIOptimizationType.name();
             LOGGER.warn("Missing option 'AIOptimizationType', adding default (" + value + ").");
@@ -68,6 +80,18 @@ public class ModConfig {
             var value = ModConfigDefaults.Defaults_BlockDistance_Far;
             LOGGER.warn("Missing option 'BlockDistance_Far', adding default (" + value + ").");
             obj.addProperty("BlockDistance_Far", value);
+            changed = true;
+        }
+        if (!obj.has("FixedDistance_CloseBlocks")) {
+            var value = ModConfigDefaults.Defaults_FixedDistance_CloseBlocks;
+            LOGGER.warn("Missing option 'FixedDistance_CloseBlocks', adding default (" + value + ").");
+            obj.addProperty("FixedDistance_CloseBlocks", value);
+            changed = true;
+        }
+        if (!obj.has("FixedDistance_FarBlocks")) {
+            var value = ModConfigDefaults.Defaults_FixedDistance_FarBlocks;
+            LOGGER.warn("Missing option 'FixedDistance_FarBlocks', adding default (" + value + ").");
+            obj.addProperty("FixedDistance_FarBlocks", value);
             changed = true;
         }
         if (!obj.has("TemptDelay")) {
@@ -98,6 +122,12 @@ public class ModConfig {
             config.DistanceScaling = value;
             changed = true;
         }
+        if (config.DistanceThresholdModeSetting == null) {
+            var value = ModConfigDefaults.Defaults_DistanceThresholdMode;
+            LOGGER.warn("Invalid DistanceThresholdMode value in config, using default (" + value + ").");
+            config.DistanceThresholdModeSetting = value;
+            changed = true;
+        }
         if (config.AIOptimizationType == null) {
             var value = ModConfigDefaults.Defaults_AIOptimizationType;
             LOGGER.warn("Invalid AIOptimizationType value in config, using default (" + value + ").");
@@ -108,6 +138,30 @@ public class ModConfig {
             var value = ModConfigDefaults.Defaults_TemptDelay;
             LOGGER.warn("Invalid TemptDelay value, using default (" + value + ").");
             config.TemptDelay = value;
+            changed = true;
+        }
+        if (config.BlockDistance_Close < 0) {
+            var value = ModConfigDefaults.Defaults_BlockDistance_Close;
+            LOGGER.warn("Invalid BlockDistance_Close value in config, using default (" + value + ").");
+            config.BlockDistance_Close = value;
+            changed = true;
+        }
+        if (config.BlockDistance_Far < config.BlockDistance_Close) {
+            var value = Math.max(config.BlockDistance_Close, ModConfigDefaults.Defaults_BlockDistance_Far);
+            LOGGER.warn("Invalid BlockDistance_Far value in config, using corrected value (" + value + ").");
+            config.BlockDistance_Far = value;
+            changed = true;
+        }
+        if (config.FixedDistance_CloseBlocks < 0) {
+            var value = ModConfigDefaults.Defaults_FixedDistance_CloseBlocks;
+            LOGGER.warn("Invalid FixedDistance_CloseBlocks value in config, using default (" + value + ").");
+            config.FixedDistance_CloseBlocks = value;
+            changed = true;
+        }
+        if (config.FixedDistance_FarBlocks < config.FixedDistance_CloseBlocks) {
+            var value = Math.max(config.FixedDistance_CloseBlocks, ModConfigDefaults.Defaults_FixedDistance_FarBlocks);
+            LOGGER.warn("Invalid FixedDistance_FarBlocks value in config, using corrected value (" + value + ").");
+            config.FixedDistance_FarBlocks = value;
             changed = true;
         }
 
@@ -147,5 +201,25 @@ public class ModConfig {
 
     public int getBlockDistance_Far_Multiplier() {
         return getMultiplierUsingDistanceScaling(5);
+    }
+
+    public boolean useFixedDistanceThresholds() {
+        return DistanceThresholdModeSetting == DistanceThresholdMode.Fixed;
+    }
+
+    public int getEffectiveBlockDistanceCloseSquared() {
+        if (useFixedDistanceThresholds()) return blocksToSquared(FixedDistance_CloseBlocks);
+        return BlockDistance_Close;
+    }
+
+    public int getEffectiveBlockDistanceFarSquared() {
+        if (useFixedDistanceThresholds()) return blocksToSquared(FixedDistance_FarBlocks);
+        return BlockDistance_Far;
+    }
+
+    private static int blocksToSquared(int blocks) {
+        long clamped = Math.max(0, blocks);
+        long squared = clamped * clamped;
+        return squared > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) squared;
     }
 }

@@ -18,6 +18,13 @@ public class Lazy_ai_pixelindiedev_client implements ClientModInitializer {
             int simDistanceChunks = client.options.getSimulationDistance().getValue();    // value is in chunks
 
             ModConfig config = ModConfig.load();
+
+            if (config.useFixedDistanceThresholds()) {
+                // Keep fixed thresholds untouched while fixed mode is enabled.
+                lastSimDistanceChunks = -1;
+                return;
+            }
+
             lastSimDistanceChunks = squaredBlocksToChunks(config.BlockDistance_Close, config.getBlockDistance_Close_Multiplier());
 
             if (simDistanceChunks != lastSimDistanceChunks) {
