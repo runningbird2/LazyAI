@@ -30,6 +30,7 @@ public class ModConfig {
     public TemptDelayEnum TemptDelay = ModConfigDefaults.Defaults_TemptDelay;
     public boolean DisableZombieEggStomping = ModConfigDefaults.Defaults_DisableZombieEggStomping;
     public boolean NeverSlowdownDistantMobs = ModConfigDefaults.Defaults_NeverSlowdownDistantMobs;
+    public boolean EnableVillagerTradingHallOptimization = ModConfigDefaults.Defaults_EnableVillagerTradingHallOptimization;
     public transient long lastModified = 0L;
 
     public static ModConfig load() {
@@ -110,6 +111,12 @@ public class ModConfig {
             var value = ModConfigDefaults.Defaults_NeverSlowdownDistantMobs;
             LOGGER.warn("Missing option 'NeverSlowdownDistantMobs', adding default (" + value + ").");
             obj.addProperty("NeverSlowdownDistantMobs", value);
+            changed = true;
+        }
+        if (!obj.has("EnableVillagerTradingHallOptimization")) {
+            var value = ModConfigDefaults.Defaults_EnableVillagerTradingHallOptimization;
+            LOGGER.warn("Missing option 'EnableVillagerTradingHallOptimization', adding default (" + value + ").");
+            obj.addProperty("EnableVillagerTradingHallOptimization", value);
             changed = true;
         }
 

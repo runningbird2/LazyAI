@@ -18,6 +18,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.village.VillagerProfession;
 import net.minecraft.world.World;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -30,6 +32,8 @@ import static com.pixelindiedev.lazy_ai_pixelindiedev.Lazy_ai_pixelindiedev.getO
 
 @Mixin(VillagerEntity.class)
 public abstract class VillagerEntityMixin implements VillagerCacheAccessor {
+    @Unique
+    private static final Logger LOGGER = LoggerFactory.getLogger("LazyAI");
     @Unique
     private final static int[] cooldowns = {50, 90, 150};  // Cooldowns from close to far, in ticks
     @Unique
@@ -56,6 +60,8 @@ public abstract class VillagerEntityMixin implements VillagerCacheAccessor {
     private RegistryEntry<VillagerProfession> cachedProfessionEntry;
     @Unique
     private RegistryKey<VillagerProfession> cachedProfessionKey;
+    @Unique
+    private static boolean tradingHallOptimizationDisabledForSession;
 
     @Shadow
     protected abstract void resetCustomer();
@@ -82,84 +88,75 @@ public abstract class VillagerEntityMixin implements VillagerCacheAccessor {
 
     @Inject(method = "mobTick", at = @At("HEAD"), cancellable = true)
     private void skipIdleTradingHallTick(ServerWorld world, CallbackInfo ci) {
+        if (!Lazy_ai_pixelindiedev.getEnableVillagerTradingHallOptimization() || tradingHallOptimizationDisabledForSession) {
+            return;
+        }
         if (villager == null || !villager.isAlive() || villager.isBaby() || villager.isPanicking()) return;
-        if (!isInTradingCell(villager)) return;
+        try {
+            if (!isInTradingCell(villager)) return;
 
-        RegistryKey<VillagerProfession> villagerprof = getCachedProfession();
-        if (villagerprof == VillagerProfession.NONE || villagerprof == VillagerProfession.NITWIT) return;
+            RegistryKey<VillagerProfession> villagerprof = getCachedProfession();
+            if (villagerprof == VillagerProfession.NONE || villagerprof == VillagerProfession.NITWIT) return;
 
-        if (villager.hasCustomer()) return;
+            if (villager.hasCustomer()) return;
 
-        if (((villager.age + randomSelectedTick) & 31) != 0) {
-            VillagerEntityAccessor accessor = (VillagerEntityAccessor) villager;
+            if (((villager.age + randomSelectedTick) & 31) != 0) {
+                VillagerEntityAccessor accessor = (VillagerEntityAccessor) villager;
 
-            int tempInt = accessor.getLevelUpTimer();
-            if (!villager.hasCustomer() && tempInt > 0) {
-                accessor.setLevelUpTimer(tempInt - 1);
+                int tempInt = accessor.getLevelUpTimer();
+                if (!villager.hasCustomer() && tempInt > 0) {
+                    accessor.setLevelUpTimer(tempInt - 1);
 
-                if (accessor.getLevelUpTimer() <= 0) {
-                    if (accessor.isLevelingUp()) accessor.invokeLevelUp(world);
-                    villager.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 200, 0));
+                    if (accessor.getLevelUpTimer() <= 0) {
+                        if (accessor.isLevelingUp()) accessor.invokeLevelUp(world);
+                        villager.addStatusEffect(new StatusEffectInstance(StatusEffects.REGENERATION, 200, 0));
+                    }
                 }
+
+                PlayerEntity lastcust = accessor.getLastCustomer();
+                if (lastcust != null) {
+                    world.handleInteraction(EntityInteraction.TRADE, lastcust, villager);
+                    world.sendEntityStatus(villager, (byte) 14);
+                    accessor.setLastCustomer(null);
+                }
+
+                if (villager.getVillagerData().profession().matchesKey(VillagerProfession.NONE) && villager.hasCustomer())
+                    resetCustomer();
+
+                ci.cancel();
             }
-
-            PlayerEntity lastcust = accessor.getLastCustomer();
-            if (lastcust != null) {
-                world.handleInteraction(EntityInteraction.TRADE, lastcust, villager);
-                world.sendEntityStatus(villager, (byte) 14);
-                accessor.setLastCustomer(null);
-            }
-
-            if (villager.getVillagerData().profession().matchesKey(VillagerProfession.NONE) && villager.hasCustomer())
-                resetCustomer();
-
-            ci.cancel();
+        } catch (RuntimeException e) {
+            disableTradingHallOptimization(e);
         }
     }
 
     @Unique
     private boolean isInTradingCell(VillagerEntity villager) {
         int[] cooldownList = getCooldownList();
-        int distanceOrdinal = Lazy_ai_pixelindiedev.getDistance(villager).ordinal();
+        int cooldown = VillagerTradingHallOptimization.selectCooldown(cooldownList, Lazy_ai_pixelindiedev.getDistance(villager));
 
-        if ((villager.age + randomSelectedTick) % cooldownList[distanceOrdinal] != 0) return isInTradingHall;
+        if (Math.floorMod(villager.age + randomSelectedTick, cooldown) != 0) return isInTradingHall;
 
         final BlockPos center = villager.getBlockPos();
         //if block was changed near, or villager is no longer standing in the same spot
-        if (shouldRefreshTradingHall || lastStandingLocation != center) {
+        if (shouldRefreshTradingHall || !center.equals(lastStandingLocation)) {
             shouldRefreshTradingHall = false;
-            lastStandingLocation = center;
+            lastStandingLocation = center.toImmutable();
 
             final World world = villager.getEntityWorld();
 
-            int fullyBlockedDirections = 0;
-            int halfBlockedDirections = 0;
-            for (Direction direction : directionsDirections) {
+            boolean[] baseSolid = new boolean[directionsDirections.length];
+            boolean[] upperSolid = new boolean[directionsDirections.length];
+            for (int index = 0; index < directionsDirections.length; index++) {
+                Direction direction = directionsDirections[index];
                 reusableSide.set(center, direction);
-                boolean baseSolid = getCachedSolidBlock(world, reusableSide);
+                baseSolid[index] = getCachedSolidBlock(world, reusableSide);
                 reusableSide.move(Direction.UP);
-                boolean upperSolid = getCachedSolidBlock(world, reusableSide);
-
-                if (baseSolid) {
-                    if (upperSolid) fullyBlockedDirections++;
-                    else halfBlockedDirections++;
-                } else {
-                    if (upperSolid) fullyBlockedDirections++;
-                    else return isInTradingHall = false; //open wall found
-                }
+                upperSolid[index] = getCachedSolidBlock(world, reusableSide);
             }
 
-            //fully closed off
-            if (fullyBlockedDirections >= 4) return isInTradingHall = true;
-
-            if (halfBlockedDirections > 0) {
-                //check ceiling, if villager can jump to get out of hole
-                reusableSide.set(center).move(Direction.UP, 2);
-                return isInTradingHall = getCachedSolidBlock(world, reusableSide);
-            }
-
-            //should not reach this, but just in case
-            return isInTradingHall = false;
+            reusableSide.set(center).move(Direction.UP, 2);
+            return isInTradingHall = VillagerTradingHallOptimization.isTradingCell(baseSolid, upperSolid, getCachedSolidBlock(world, reusableSide));
         }
 
         //trading hall check does not need to refresh, so return the saved value
@@ -195,5 +192,19 @@ public abstract class VillagerEntityMixin implements VillagerCacheAccessor {
             case Agressive -> cooldownsAgressive;
             case null, default -> cooldowns;
         };
+    }
+
+    @Unique
+    private void disableTradingHallOptimization(RuntimeException e) {
+        isInTradingHall = false;
+        shouldRefreshTradingHall = true;
+        lastStandingLocation = null;
+
+        if (tradingHallOptimizationDisabledForSession) {
+            return;
+        }
+
+        tradingHallOptimizationDisabledForSession = true;
+        LOGGER.error("Disabled villager trading-hall optimization for this session after an unexpected exception. Set EnableVillagerTradingHallOptimization=false in lazy-ai.json to keep it off across restarts.", e);
     }
 }

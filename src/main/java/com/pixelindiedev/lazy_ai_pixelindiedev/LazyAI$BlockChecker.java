@@ -1,6 +1,5 @@
 package com.pixelindiedev.lazy_ai_pixelindiedev;
 
-import it.unimi.dsi.fastutil.objects.Reference2BooleanMap;
 import it.unimi.dsi.fastutil.objects.Reference2BooleanOpenHashMap;
 import net.minecraft.block.*;
 import net.minecraft.util.math.BlockPos;
@@ -10,21 +9,14 @@ import net.minecraft.world.EmptyBlockView;
 
 public class LazyAI$BlockChecker {
     //this checks for collision on blocks more efficiently than the isSolidBlock() as this checks less accurate, although I don't need the accuracy for what I use it for
-    private static final Reference2BooleanMap<Block> blockSolidCollisionCheckCache = new Reference2BooleanOpenHashMap<>(); //Stays in memory, does not have a big size, so it's fine
+    private static final Reference2BooleanOpenHashMap<Block> blockSolidCollisionCheckCache = new Reference2BooleanOpenHashMap<>(); //Stays in memory, does not have a big size, so it's fine
     private static volatile boolean initialized = false;
 
     static {
         blockSolidCollisionCheckCache.defaultReturnValue(false);
     }
 
-    public static void initializeCacheAsync() {
-        new Thread(() -> {
-            initializeCache();
-            System.out.println("LazyAI$BlockCheckerCacheInit started initializing asynchronously");
-        }, "LazyAI$BlockCheckerCacheInit").start();
-    }
-
-    private static void initializeCache() {
+    public static void initializeCache() {
         if (initialized) return;
 
         synchronized (blockSolidCollisionCheckCache) {
@@ -85,7 +77,6 @@ public class LazyAI$BlockChecker {
             blockSolidCollisionCheckCache.put(Blocks.SNOW, false);
 
             initialized = true;
-            System.out.println("LazyAI$BlockCheckerCacheInit finished initializing asynchronously");
         }
     }
 

@@ -13,4 +13,5 @@ public class ModConfigDefaults {
     public static final TemptDelayEnum Defaults_TemptDelay = TemptDelayEnum.Low;
     public static final boolean Defaults_DisableZombieEggStomping = false;
     public static final boolean Defaults_NeverSlowdownDistantMobs = false;
+    public static final boolean Defaults_EnableVillagerTradingHallOptimization = true;
 }

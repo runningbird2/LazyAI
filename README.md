@@ -49,6 +49,7 @@ _Lower ms -> better_
 - **Disable Zombie Egg Stomping** | *This setting controls the prevention of zombies wanting to destroy turtle eggs*
 ### Available from version 1.3.2+
 - **Never Slow Down Distant Mobs** | *This setting controls if distant mobs should never slow down. Enabling this reduces the mod's TPS-boosting effect on your game, but will fix large (multiply chunks large) mob farms slowing down production.*
+- **Villager Trading Hall Optimization** | *This setting controls the villager trading-cell shortcut. Disable it if you need to keep every other Lazy AI optimization on while turning off only the trading-hall path.*
 
 ### Fixed threshold configuration
 When `DistanceThresholdMode` is `Fixed`, these values in `lazy-ai.json` define exactly where each tier starts:
@@ -60,7 +61,8 @@ Example (`>64` starts slowdown, `>96` enters far tier):
 {
   "DistanceThresholdMode": "Fixed",
   "FixedDistance_CloseBlocks": 64,
-  "FixedDistance_FarBlocks": 96
+  "FixedDistance_FarBlocks": 96,
+  "EnableVillagerTradingHallOptimization": true
 }
 ```
 

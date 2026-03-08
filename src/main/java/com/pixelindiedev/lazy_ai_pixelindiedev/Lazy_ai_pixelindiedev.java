@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.pixelindiedev.lazy_ai_pixelindiedev.LazyAI$BlockChecker.initializeCacheAsync;
+import static com.pixelindiedev.lazy_ai_pixelindiedev.LazyAI$BlockChecker.initializeCache;
 
 public class Lazy_ai_pixelindiedev implements ModInitializer {
     private static final Map<UUID, DistanceType> cache = new ConcurrentHashMap<>();
@@ -117,6 +117,10 @@ public class Lazy_ai_pixelindiedev implements ModInitializer {
         return CONFIG.NeverSlowdownDistantMobs;
     }
 
+    public static boolean getEnableVillagerTradingHallOptimization() {
+        return CONFIG.EnableVillagerTradingHallOptimization;
+    }
+
     public static int getServerTick() {
         return lastTick;
     }
@@ -133,6 +137,6 @@ public class Lazy_ai_pixelindiedev implements ModInitializer {
         ServerTickEvents.START_SERVER_TICK.register(Lazy_ai_pixelindiedev::onServerTick);
         CONFIG = ModConfig.load();
 
-        initializeCacheAsync();
+        initializeCache();
     }
 }
